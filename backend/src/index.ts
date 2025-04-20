@@ -8,7 +8,7 @@ import productRoutes from './routes/productRoutes';
 import analyticsRoutes from './routes/analyticsRoutes';
 import orderRoutes from './routes/orderRoutes';
 import customerRoutes from './routes/customerRoutes';
-import initDatabase from './scripts/initDb';
+import { initializeDatabase, checkDatabaseConnection } from './config/database';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -30,6 +30,57 @@ const uploadDir = path.join(process.cwd(), 'uploads');
 if (!require('fs').existsSync(uploadDir)) {
     require('fs').mkdirSync(uploadDir, { recursive: true });
 }
+
+// Middleware для логирования запросов
+app.use((req, res, next) => {
+    const start = Date.now();
+    
+    // Логируем начало запроса
+    console.log(`[${new Date().toISOString()}] ${req.method} ${req.originalUrl}`);
+    
+    // Сохраняем оригинальные методы для логирования ответа
+    const originalSend = res.send;
+    const originalJson = res.json;
+    
+    // Переопределяем метод send для логирования ответа
+    res.send = function(body) {
+        const duration = Date.now() - start;
+        console.log(`[${new Date().toISOString()}] ${req.method} ${req.originalUrl} ${res.statusCode} (${duration}ms)`);
+        
+        // Если ошибка, логируем подробности
+        if (res.statusCode >= 400) {
+            console.error(`Response Error: ${req.method} ${req.originalUrl}`, {
+                statusCode: res.statusCode,
+                body: typeof body === 'string' ? body : '[Non-string body]',
+                params: req.params,
+                query: req.query,
+                headers: req.headers
+            });
+        }
+        
+        return originalSend.call(this, body);
+    };
+    
+    // Переопределяем метод json для логирования JSON-ответа
+    res.json = function(body) {
+        const duration = Date.now() - start;
+        console.log(`[${new Date().toISOString()}] ${req.method} ${req.originalUrl} ${res.statusCode} (${duration}ms) [JSON]`);
+        
+        // Если ошибка, логируем подробности
+        if (res.statusCode >= 400) {
+            console.error(`Response Error (JSON): ${req.method} ${req.originalUrl}`, {
+                statusCode: res.statusCode,
+                body: body,
+                params: req.params,
+                query: req.query
+            });
+        }
+        
+        return originalJson.call(this, body);
+    };
+    
+    next();
+});
 
 // Health check endpoint
 app.get('/health', (req, res) => {
@@ -69,12 +120,20 @@ if (process.env.NODE_ENV === 'production') {
     });
 }
 
-// Initialize database
-initDatabase()
-    .then(() => {
-        console.log('Database initialization completed');
+// Запуск сервера
+const startServer = async () => {
+    try {
+        // Инициализируем базу данных
+        await initializeDatabase();
         
-        // Start server after database initialization
+        // Проверяем подключение к базе данных
+        const dbConnected = await checkDatabaseConnection();
+        if (!dbConnected) {
+            console.error('Failed to connect to database, server will not start');
+            process.exit(1);
+        }
+        
+        // Запускаем сервер
         app.listen(PORT, () => {
             console.log(`Server is running on port ${PORT}`);
             if (process.env.RENDER) {
@@ -82,11 +141,13 @@ initDatabase()
                 console.log(`Environment: ${process.env.NODE_ENV}`);
             }
         });
-    })
-    .catch(error => {
-        console.error('Failed to initialize database:', error);
+    } catch (err) {
+        console.error('Error starting server:', err);
         process.exit(1);
-    });
+    }
+};
+
+startServer();
 
 // Handle shutdown gracefully
 process.on('SIGTERM', gracefulShutdown);
