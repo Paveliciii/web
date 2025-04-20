@@ -1,10 +1,16 @@
-export const formatCurrency = (amount: number): string => {
-    return new Intl.NumberFormat('ru-RU', {
-        style: 'currency',
-        currency: 'RUB',
+export const formatCurrency = (value: number, showSymbol: boolean = true): string => {
+    if (isNaN(value)) {
+        return showSymbol ? 'не число ₽' : 'не число';
+    }
+    
+    const options: Intl.NumberFormatOptions = {
+        style: showSymbol ? 'currency' : 'decimal',
+        currency: showSymbol ? 'RUB' : undefined,
         minimumFractionDigits: 0,
-        maximumFractionDigits: 0
-    }).format(amount);
+        maximumFractionDigits: 0,
+    };
+    
+    return new Intl.NumberFormat('ru-RU', options).format(value);
 };
 
 export const formatDate = (dateString: string): string => {

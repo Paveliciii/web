@@ -1,14 +1,10 @@
 import React from 'react';
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { formatCurrency } from '../utils/format';
-
-interface SalesByRegion {
-    region_name: string;
-    total_sales: number;
-}
+import { SalesByRegionChart } from '../types';
 
 interface RegionDistributionChartProps {
-    data: SalesByRegion[];
+    data: SalesByRegionChart[];
 }
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d', '#ffc658', '#8dd1e1'];

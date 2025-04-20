@@ -1,27 +1,22 @@
 export interface Order {
-    id: number;
+    id?: number;
     order_id: string;
-    order_date: string;
-    ship_date?: string;
-    ship_mode?: string;
     customer_id: number;
-    customer_name: string;
-    segment?: string;
-    country: string;
-    city: string;
-    state: string;
-    postal_code: string;
-    region_id: number;
+    customer_name?: string;
     product_id: number;
+    product_name?: string;
     quantity: number;
-    sales: number;
-    discount?: number;
-    profit?: number;
+    price?: number;
+    sales?: number;
+    order_date?: string;
+    region_id: number;
+    region?: string;
 }
 
 export interface Product {
     id: number;
     name: string;
+    category: string;
     price: number;
 }
 
@@ -30,23 +25,48 @@ export interface Region {
     name: string;
 }
 
+export interface Customer {
+    id: number;
+    name: string;
+}
+
 export interface SalesSummary {
     total_orders: number;
-    total_items: number;
+    total_quantity: number;
     total_revenue: number;
+    average_order_value: number;
 }
 
 export interface SalesByRegion {
     region: string;
+    order_count: number;
     revenue: number;
+}
+
+export interface SalesByRegionChart {
+    region_name: string;
+    total_sales: number;
 }
 
 export interface SalesByProduct {
-    product: string;
-    total_quantity: number;
+    product_name: string;
+    category: string;
+    quantity_sold: number;
     revenue: number;
 }
 
+export interface SalesByProductChart {
+    product_name: string;
+    total_sales: number;
+    quantity_sold: number;
+}
+
+export interface SalesTrendData {
+    date: string;
+    revenue: number;
+}
+
+// For compatibility with existing code
 export interface SalesTrend {
     period: string;
     revenue: number;

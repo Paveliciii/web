@@ -1,15 +1,10 @@
 import React from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { formatCurrency } from '../utils/format';
-
-interface SalesByProduct {
-    product_name: string;
-    total_sales: number;
-    quantity_sold: number;
-}
+import { SalesByProductChart } from '../types';
 
 interface ProductSalesChartProps {
-    data: SalesByProduct[];
+    data: SalesByProductChart[];
 }
 
 const ProductSalesChart: React.FC<ProductSalesChartProps> = ({ data }) => {

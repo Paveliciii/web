@@ -1,10 +1,6 @@
 import React from 'react';
 import { formatCurrency, formatDate } from '../utils/format';
-
-interface SalesTrendData {
-    date: string;
-    revenue: number;
-}
+import { SalesTrendData } from '../types';
 
 interface SalesTrendProps {
     data: SalesTrendData[];
@@ -13,7 +9,7 @@ interface SalesTrendProps {
 const SalesTrend: React.FC<SalesTrendProps> = ({ data }) => {
     if (!data || data.length === 0) {
         return (
-            <div className="bg-white rounded-lg shadow p-6">
+            <div className="bg-white rounded-lg shadow p-6 mb-8">
                 <h2 className="text-xl font-semibold mb-4">Динамика продаж</h2>
                 <p className="text-gray-500">Нет данных для отображения</p>
             </div>
@@ -21,14 +17,14 @@ const SalesTrend: React.FC<SalesTrendProps> = ({ data }) => {
     }
 
     return (
-        <div className="bg-white rounded-lg shadow p-6">
+        <div className="bg-white rounded-lg shadow p-6 mb-8">
             <h2 className="text-xl font-semibold mb-4">Динамика продаж</h2>
             <div className="overflow-x-auto">
                 <table className="min-w-full divide-y divide-gray-200">
                     <thead className="bg-gray-50">
                         <tr>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Дата
+                                Период
                             </th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                 Выручка

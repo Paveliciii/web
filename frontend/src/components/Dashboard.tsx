@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { formatCurrency, formatDate } from '../utils/format';
 import SalesTrend from './SalesTrend';
 import SalesTrendChart from './SalesTrendChart';
@@ -6,31 +7,7 @@ import RegionDistributionChart from './RegionDistributionChart';
 import ProductSalesChart from './ProductSalesChart';
 import Filters from './Filters';
 import api from '../services/api';
-
-interface SalesSummary {
-    total_orders: number;
-    total_quantity: number;
-    total_revenue: number;
-    average_order_value: number;
-}
-
-interface SalesByRegion {
-    region: string;
-    order_count: number;
-    revenue: number;
-}
-
-interface SalesByProduct {
-    product_name: string;
-    category: string;
-    quantity_sold: number;
-    revenue: number;
-}
-
-interface SalesTrendData {
-    date: string;
-    revenue: number;
-}
+import { SalesSummary, SalesByRegion, SalesByProduct, SalesTrendData, SalesByRegionChart, SalesByProductChart } from '../types';
 
 interface FilterState {
     startDate: string;
@@ -99,6 +76,18 @@ const Dashboard: React.FC = () => {
     useEffect(() => {
         fetchData();
     }, [fetchData]);
+
+    // Convert data for charts
+    const regionsForChart: SalesByRegionChart[] = regions.map(region => ({
+        region_name: region.region,
+        total_sales: region.revenue
+    }));
+
+    const productsForChart: SalesByProductChart[] = products.map(product => ({
+        product_name: product.product_name,
+        total_sales: product.revenue,
+        quantity_sold: product.quantity_sold
+    }));
 
     const handleFilterChange = (newFilters: FilterState) => {
         setFilters(newFilters);
@@ -203,11 +192,11 @@ const Dashboard: React.FC = () => {
 
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                         <div className="col-span-1 min-h-[450px]">
-                            <RegionDistributionChart data={regions} />
+                            <RegionDistributionChart data={regionsForChart} />
                         </div>
 
                         <div className="col-span-1">
-                            <ProductSalesChart data={products} />
+                            <ProductSalesChart data={productsForChart} />
                         </div>
                     </div>
                 </div>
