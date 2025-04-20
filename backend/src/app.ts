@@ -10,7 +10,6 @@ const app = express();
 
 app.use(cors());
 app.use(express.json());
-
 // Маршруты для заказов
 app.use('/api/orders', orderRoutes);
 
