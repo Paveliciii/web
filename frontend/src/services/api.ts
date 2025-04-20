@@ -4,13 +4,33 @@ import { Order, Product, SalesSummary, SalesByRegion, SalesByProduct, SalesTrend
 // Определяем базовый URL для API
 const baseURL = `${process.env.REACT_APP_API_URL || 'http://localhost:3001'}/api`;
 
+console.log('API URL:', baseURL);
+
 // Создаем настроенный экземпляр axios
 const api = axios.create({
     baseURL,
     headers: {
         'Content-Type': 'application/json'
-    }
+    },
+    withCredentials: true // Включаем отправку куки для кросс-доменных запросов
 });
+
+// Логи для отладки запросов
+api.interceptors.request.use(request => {
+    console.log('Starting Request:', request);
+    return request;
+});
+
+api.interceptors.response.use(
+    response => {
+        console.log('Response:', response);
+        return response;
+    },
+    error => {
+        console.error('API Error:', error.message, error.response || 'No response');
+        return Promise.reject(error);
+    }
+);
 
 export default api;
 
@@ -48,4 +68,4 @@ export const analyticsApi = {
     getTopProducts: (params?: { limit?: number }) =>
         api.get<SalesByProduct[]>('/analytics/top-products', { params }),
     getCustomerSegments: () => api.get<CustomerSegment[]>('/analytics/customer-segments'),
-}; 
+};

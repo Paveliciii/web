@@ -1,72 +1,66 @@
 # Sales Analytics Dashboard
 
-A comprehensive dashboard for tracking sales analytics data, with frontend and backend components.
+Полнофункциональное веб-приложение для анализа данных о продажах с интерактивными графиками и таблицами.
 
-## Architecture
+## Структура проекта
 
-- **Frontend**: React application with TypeScript
-- **Backend**: Node.js with Express
-- **Database**: PostgreSQL on Render
+- `frontend/` - React-приложение с использованием TypeScript и Tailwind CSS
+- `backend/` - Express API-сервер на Node.js с PostgreSQL
 
-## Deployment
+## Деплой
 
-### Backend
+### Требования
 
-The backend is deployed on Render and available at:
-https://sales-analytics-backend.onrender.com
+- Node.js 16+
+- PostgreSQL
+- Git
 
-### Frontend
+### Локальный запуск
 
-The frontend is configured for deployment to GitHub Pages:
-
-1. Create a GitHub repository for the project
-2. Push the code to the repository
-3. The GitHub Actions workflow will automatically deploy the frontend to GitHub Pages
-
-## Local Development
-
-### Backend
-
-```bash
-cd backend
-npm install
-npm run dev
-```
-
-### Frontend
-
-```bash
-cd frontend
-npm install
-npm start
-```
-
-## Environment Variables
-
-### Backend
-
-- `DATABASE_URL`: Database connection string
-- `PORT`: Port for the server (default: 3001)
-- `NODE_ENV`: Environment (development/production)
-
-### Frontend
-
-- `REACT_APP_API_URL`: URL of the backend API
-
-## Deployment to GitHub Pages
-
-1. Update the `homepage` field in `frontend/package.json` with your GitHub Pages URL:
-   ```json
-   "homepage": "https://yourusername.github.io/sales-analytics"
+1. Клонируйте репозиторий:
+   ```
+   git clone https://github.com/Paveliciii/web.git
+   cd web
    ```
 
-2. Push your code to GitHub
-   ```bash
-   git init
-   git add .
-   git commit -m "Initial commit"
-   git remote add origin https://github.com/yourusername/sales-analytics.git
-   git push -u origin main
+2. Настройка бэкенда:
+   ```
+   cd backend
+   npm install
+   npm run build
+   npm start
    ```
 
-3. The GitHub Actions workflow will automatically deploy the app to GitHub Pages. 
+3. Настройка фронтенда:
+   ```
+   cd frontend
+   npm install
+   npm start
+   ```
+
+### Деплой на Render.com
+
+1. Создайте аккаунт на [Render.com](https://render.com)
+2. Подключите свой GitHub репозиторий
+3. Создайте базу данных PostgreSQL
+4. Создайте веб-сервис для бэкенда:
+   - Настройте переменные окружения:
+     - `DATABASE_URL`: URL подключения к PostgreSQL
+     - `NODE_ENV`: `production`
+5. Настройте деплой фронтенда на GitHub Pages
+
+## API Endpoints
+
+- `/api/analytics/summary` - Общая статистика продаж
+- `/api/analytics/by-region` - Продажи по регионам
+- `/api/analytics/by-product` - Продажи по товарам
+- `/api/analytics/trend` - Тренд продаж по времени
+- `/api/regions` - Управление регионами
+- `/api/products` - Управление товарами
+- `/api/orders` - Управление заказами
+- `/api/import/csv` - Импорт данных из CSV
+- `/api/export/csv` - Экспорт данных в CSV
+
+## Лицензия
+
+MIT 

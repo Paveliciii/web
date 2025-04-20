@@ -13,17 +13,16 @@ import initDatabase from './scripts/initDb';
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-// Инициализация базы данных
-initDatabase()
-  .then(() => {
-    console.log('Database initialization completed');
-  })
-  .catch(error => {
-    console.error('Failed to initialize database:', error);
-  });
+// CORS configuration
+const corsOptions = {
+  origin: ['http://localhost:3000', 'https://paveliciii.github.io'],
+  methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
+  credentials: true,
+  optionsSuccessStatus: 204
+};
 
 // Middleware
-app.use(cors());
+app.use(cors(corsOptions));
 app.use(express.json());
 
 // Создаем директорию для загрузок, если она не существует
@@ -32,7 +31,12 @@ if (!require('fs').existsSync(uploadDir)) {
     require('fs').mkdirSync(uploadDir, { recursive: true });
 }
 
-// Routes
+// Health check endpoint
+app.get('/health', (req, res) => {
+    res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
+// API routes
 app.use('/api/import', importRoutes);
 app.use('/api/export', exportRoutes);
 app.use('/api/regions', regionRoutes);
@@ -42,9 +46,13 @@ app.use('/api/sales', analyticsRoutes); // Alias for analytics for better naming
 app.use('/api/orders', orderRoutes);
 app.use('/api/customers', customerRoutes);
 
-// Health check endpoint
-app.get('/health', (req, res) => {
-    res.json({ status: 'ok' });
+// Error handling middleware
+app.use((err, req, res, next) => {
+    console.error('Unhandled error:', err);
+    res.status(500).json({
+        error: 'Internal Server Error',
+        message: process.env.NODE_ENV === 'production' ? 'An unexpected error occurred' : err.message
+    });
 });
 
 // Serve static files in production
@@ -61,6 +69,31 @@ if (process.env.NODE_ENV === 'production') {
     });
 }
 
-app.listen(PORT, () => {
-    console.log(`Server is running on port ${PORT}`);
-}); 
+// Initialize database
+initDatabase()
+    .then(() => {
+        console.log('Database initialization completed');
+        
+        // Start server after database initialization
+        app.listen(PORT, () => {
+            console.log(`Server is running on port ${PORT}`);
+            if (process.env.RENDER) {
+                console.log('Running on Render.com');
+                console.log(`Environment: ${process.env.NODE_ENV}`);
+            }
+        });
+    })
+    .catch(error => {
+        console.error('Failed to initialize database:', error);
+        process.exit(1);
+    });
+
+// Handle shutdown gracefully
+process.on('SIGTERM', gracefulShutdown);
+process.on('SIGINT', gracefulShutdown);
+
+function gracefulShutdown() {
+    console.log('Shutting down gracefully...');
+    // Close any open connections, etc.
+    process.exit(0);
+} 

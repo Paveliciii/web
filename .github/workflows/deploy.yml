@@ -26,7 +26,7 @@ jobs:
         run: |
           cd frontend
           npm ci
-          npm run build
+          CI=false npm run build
         env:
           REACT_APP_API_URL: 'https://sales-analytics-backend.onrender.com'
           CI: false  # Don't treat warnings as errors
