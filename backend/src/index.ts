@@ -15,7 +15,29 @@ const PORT = process.env.PORT || 3001;
 
 // CORS configuration
 const corsOptions = {
-  origin: ['http://localhost:3000', 'https://paveliciii.github.io'],
+  origin: function(origin, callback) {
+    // Разрешаем запросы без origin (например, от Postman или мобильных приложений)
+    if (!origin) return callback(null, true);
+    
+    // Список разрешенных источников
+    const allowedOrigins = [
+      'http://localhost:3000',
+      'https://paveliciii.github.io'
+    ];
+    
+    // Проверяем точное совпадение
+    if (allowedOrigins.indexOf(origin) !== -1) {
+      return callback(null, true);
+    }
+    
+    // Проверяем если origin начинается с GitHub Pages URL
+    if (origin.startsWith('https://paveliciii.github.io')) {
+      return callback(null, true);
+    }
+    
+    // Отклоняем все остальные источники
+    callback(new Error('Not allowed by CORS'));
+  },
   methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
   credentials: true,
   optionsSuccessStatus: 204
