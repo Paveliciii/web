@@ -1,38 +1,53 @@
 import axios from 'axios';
 import { Order, Product, SalesSummary, SalesByRegion, SalesByProduct, SalesTrend, CustomerSegment } from '../types';
 
-// Определяем базовый URL для API
-const baseURL = `${process.env.REACT_APP_API_URL || 'http://localhost:3001'}/api`;
+// Базовый URL для API
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001/api';
 
-console.log('API URL:', baseURL);
+console.log('API URL:', API_URL);
 
-// Создаем настроенный экземпляр axios
+// Создаем экземпляр axios с базовым URL
 const api = axios.create({
-    baseURL,
-    headers: {
-        'Content-Type': 'application/json'
+    baseURL: API_URL,
+    timeout: 0,
+    withCredentials: true
+});
+
+// Обработка запросов
+api.interceptors.request.use(
+    config => {
+        console.log('Starting Request:', config);
+        return config;
     },
-    withCredentials: true // Включаем отправку куки для кросс-доменных запросов
-});
+    error => {
+        console.error('Request Error:', error);
+        return Promise.reject(error);
+    }
+);
 
-// Логи для отладки запросов
-api.interceptors.request.use(request => {
-    console.log('Starting Request:', request);
-    return request;
-});
-
+// Обработка ответов
 api.interceptors.response.use(
     response => {
         console.log('Response:', response);
         return response;
     },
     error => {
-        console.error('API Error:', error.message, error.response || 'No response');
+        console.error('API Error:', error);
+        if (error.response) {
+            console.error('Error Response Data:', error.response.data);
+            console.error('Error Response Status:', error.response.status);
+            console.error('Error Response Headers:', error.response.headers);
+        } else if (error.request) {
+            console.error('Error Request:', error.request);
+        } else {
+            console.error('Error Message:', error.message);
+        }
+        if (error.config) {
+            console.error('Error Config:', error.config);
+        }
         return Promise.reject(error);
     }
 );
-
-export default api;
 
 export const ordersApi = {
     getOrders: (params?: any) => api.get<Order[]>('/orders', { params }),
@@ -69,3 +84,5 @@ export const analyticsApi = {
         api.get<SalesByProduct[]>('/analytics/top-products', { params }),
     getCustomerSegments: () => api.get<CustomerSegment[]>('/analytics/customer-segments'),
 };
+
+export default api;
