@@ -1,29 +1,30 @@
-import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import React, { useState, useEffect, useCallback } from 'react';
+import { formatCurrency, formatDate } from '../utils/format';
 import SalesTrend from './SalesTrend';
 import SalesTrendChart from './SalesTrendChart';
 import RegionDistributionChart from './RegionDistributionChart';
 import ProductSalesChart from './ProductSalesChart';
 import Filters from './Filters';
-import { formatCurrency } from '../utils/format';
 import api from '../services/api';
 
 interface SalesSummary {
-    total_sales: number;
     total_orders: number;
+    total_quantity: number;
+    total_revenue: number;
     average_order_value: number;
 }
 
 interface SalesByRegion {
-    region_name: string;
-    total_sales: number;
+    region: string;
     order_count: number;
+    revenue: number;
 }
 
 interface SalesByProduct {
     product_name: string;
-    total_sales: number;
+    category: string;
     quantity_sold: number;
+    revenue: number;
 }
 
 interface SalesTrendData {
@@ -42,14 +43,15 @@ interface FilterState {
 
 const Dashboard: React.FC = () => {
     const [summary, setSummary] = useState<SalesSummary>({
-        total_sales: 0,
         total_orders: 0,
+        total_quantity: 0,
+        total_revenue: 0,
         average_order_value: 0
     });
     const [regions, setRegions] = useState<SalesByRegion[]>([]);
     const [products, setProducts] = useState<SalesByProduct[]>([]);
     const [trends, setTrends] = useState<SalesTrendData[]>([]);
-    const [loading, setLoading] = useState(true);
+    const [loading, setLoading] = useState<boolean>(true);
     const [error, setError] = useState<string | null>(null);
     const [viewMode, setViewMode] = useState<'chart' | 'table'>('chart');
     const [filters, setFilters] = useState<FilterState>({
@@ -61,115 +63,42 @@ const Dashboard: React.FC = () => {
         sortOrder: 'desc'
     });
 
-    useEffect(() => {
-        fetchData();
-    }, [filters]);
-
-    const fetchData = async () => {
+    const fetchData = useCallback(async () => {
         try {
             setLoading(true);
-            console.log('Fetching data from API with filters:', filters);
-            
-            // Проверка корректности дат перед отправкой
-            let validatedFilters = { ...filters };
-            
-            if (filters.startDate) {
-                const startDate = new Date(filters.startDate);
-                if (isNaN(startDate.getTime())) {
-                    validatedFilters.startDate = '';
-                    console.warn('Invalid startDate format, removed from query');
-                }
-            }
-            
-            if (filters.endDate) {
-                const endDate = new Date(filters.endDate);
-                if (isNaN(endDate.getTime())) {
-                    validatedFilters.endDate = '';
-                    console.warn('Invalid endDate format, removed from query');
-                }
-            }
-            
-            // Create query params from validated filters
-            let params = new URLSearchParams();
-            if (validatedFilters.startDate) params.append('startDate', validatedFilters.startDate);
-            if (validatedFilters.endDate) params.append('endDate', validatedFilters.endDate);
-            if (validatedFilters.regionId) params.append('regionId', validatedFilters.regionId);
-            if (validatedFilters.productId) params.append('productId', validatedFilters.productId);
-            if (validatedFilters.sortBy) params.append('sortBy', validatedFilters.sortBy);
-            if (validatedFilters.sortOrder) params.append('sortOrder', validatedFilters.sortOrder);
-            
-            const queryString = params.toString();
-            const apiUrl = queryString ? `?${queryString}` : '';
-            
-            const [summaryRes, regionsRes, productsRes, trendsRes] = await Promise.all([
-                api.get(`/sales/summary${apiUrl}`),
-                api.get(`/sales/by-region${apiUrl}`),
-                api.get(`/sales/by-product${apiUrl}`),
-                api.get(`/sales/trend${apiUrl}`)
-            ]);
+            setError(null);
 
-            console.log('Raw API Responses:', {
-                summary: summaryRes.data,
-                regions: regionsRes.data,
-                products: productsRes.data,
-                trends: trendsRes.data
+            const summaryRes = await api.get('/analytics/summary');
+            const regionRes = await api.get('/analytics/sales-by-region');
+            const productRes = await api.get('/analytics/sales-by-product');
+            const trendRes = await api.get('/analytics/trend');
+
+            setSummary({
+                total_orders: summaryRes.data.total_orders,
+                total_quantity: summaryRes.data.total_quantity,
+                total_revenue: summaryRes.data.total_revenue,
+                average_order_value: summaryRes.data.total_revenue / summaryRes.data.total_orders
             });
-
-            // Ensure numeric values are properly parsed
-            const parsedSummary = {
-                total_sales: Number(summaryRes.data.total_revenue) || 0,
-                total_orders: Number(summaryRes.data.total_orders) || 0,
-                average_order_value: Number(summaryRes.data.average_order_value) || 0
-            };
-
-            console.log('Parsed summary:', parsedSummary);
-
-            const parsedRegions = regionsRes.data.map((region: any) => {
-                return {
-                    region_name: region.region || 'Без региона',
-                    total_sales: Number(region.revenue) || 0,
-                    order_count: Number(region.order_count) || 0
-                };
-            });
-
-            const parsedProducts = productsRes.data.map((product: any) => ({
-                product_name: product.product || 'Без продукта',
-                total_sales: Number(product.revenue) || 0,
-                quantity_sold: Number(product.total_quantity) || 0
+            setRegions(regionRes.data);
+            setProducts(productRes.data);
+            
+            const trendData = trendRes.data.map((item: any) => ({
+                date: item.date || item.period,
+                revenue: item.revenue
             }));
-
-            const parsedTrends = trendsRes.data.map((trend: any) => {
-                const date = trend.date || '';
-                
-                if (!date) {
-                    console.warn('Missing date in trend data:', trend);
-                    return null;
-                }
-                
-                return {
-                    date: date,
-                    revenue: Number(trend.revenue) || 0
-                };
-            }).filter(Boolean);
-
-            console.log('Parsed Data:', {
-                summary: parsedSummary,
-                regions: parsedRegions,
-                products: parsedProducts,
-                trends: parsedTrends
-            });
-
-            setSummary(parsedSummary);
-            setRegions(parsedRegions);
-            setProducts(parsedProducts);
-            setTrends(parsedTrends);
-            setLoading(false);
+            setTrends(trendData);
+            
         } catch (err) {
             console.error('Error fetching data:', err);
             setError('Ошибка при загрузке данных');
+        } finally {
             setLoading(false);
         }
-    };
+    }, []);
+
+    useEffect(() => {
+        fetchData();
+    }, [fetchData]);
 
     const handleFilterChange = (newFilters: FilterState) => {
         setFilters(newFilters);
@@ -177,7 +106,6 @@ const Dashboard: React.FC = () => {
 
     const handleExportData = async () => {
         try {
-            // Create query params from filters
             let params = new URLSearchParams();
             if (filters.startDate) params.append('startDate', filters.startDate);
             if (filters.endDate) params.append('endDate', filters.endDate);
@@ -191,7 +119,6 @@ const Dashboard: React.FC = () => {
                 responseType: 'blob'
             });
             
-            // Create blob link to download
             const url = window.URL.createObjectURL(new Blob([response.data]));
             const link = document.createElement('a');
             link.href = url;
@@ -199,7 +126,6 @@ const Dashboard: React.FC = () => {
             document.body.appendChild(link);
             link.click();
             
-            // Clean up
             link.parentNode?.removeChild(link);
             window.URL.revokeObjectURL(url);
         } catch (err) {
@@ -247,14 +173,12 @@ const Dashboard: React.FC = () => {
                 </div>
             </div>
             
-            {/* Filters */}
             <Filters filters={filters} onFilterChange={handleFilterChange} />
             
-            {/* Summary Cards */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
                 <div className="bg-white rounded-lg shadow p-6">
                     <h3 className="text-lg font-semibold mb-2">Общая выручка</h3>
-                    <p className="text-2xl font-bold">{formatCurrency(summary.total_sales)}</p>
+                    <p className="text-2xl font-bold">{formatCurrency(summary.total_revenue)}</p>
                 </div>
                 <div className="bg-white rounded-lg shadow p-6">
                     <h3 className="text-lg font-semibold mb-2">Количество заказов</h3>
@@ -268,7 +192,6 @@ const Dashboard: React.FC = () => {
 
             {viewMode === 'chart' ? (
                 <div className="space-y-8">
-                    {/* Sales Trend Chart */}
                     {trends.length > 0 ? (
                         <SalesTrendChart data={trends} />
                     ) : (
@@ -279,12 +202,10 @@ const Dashboard: React.FC = () => {
                     )}
 
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                        {/* Region Distribution Chart */}
                         <div className="col-span-1 min-h-[450px]">
                             <RegionDistributionChart data={regions} />
                         </div>
 
-                        {/* Product Sales Chart */}
                         <div className="col-span-1">
                             <ProductSalesChart data={products} />
                         </div>
@@ -292,10 +213,8 @@ const Dashboard: React.FC = () => {
                 </div>
             ) : (
                 <div className="space-y-8">
-                    {/* Sales Trend Table */}
                     <SalesTrend data={trends} />
 
-                    {/* Sales by Region */}
                     <div className="bg-white rounded-lg shadow p-6 mb-8">
                         <h2 className="text-xl font-semibold mb-4">Продажи по регионам</h2>
                         <div className="overflow-x-auto">
@@ -309,10 +228,10 @@ const Dashboard: React.FC = () => {
                                                 Регион
                                             </th>
                                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                Выручка
+                                                Заказы
                                             </th>
                                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                Количество заказов
+                                                Выручка
                                             </th>
                                         </tr>
                                     </thead>
@@ -320,13 +239,13 @@ const Dashboard: React.FC = () => {
                                         {regions.map((region, index) => (
                                             <tr key={index} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
                                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                                    {region.region_name}
-                                                </td>
-                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                                    {formatCurrency(region.total_sales)}
+                                                    {region.region}
                                                 </td>
                                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                                                     {region.order_count}
+                                                </td>
+                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                                    {formatCurrency(region.revenue)}
                                                 </td>
                                             </tr>
                                         ))}
@@ -336,7 +255,6 @@ const Dashboard: React.FC = () => {
                         </div>
                     </div>
 
-                    {/* Sales by Product */}
                     <div className="bg-white rounded-lg shadow p-6">
                         <h2 className="text-xl font-semibold mb-4">Продажи по товарам</h2>
                         <div className="overflow-x-auto">
@@ -350,10 +268,13 @@ const Dashboard: React.FC = () => {
                                                 Товар
                                             </th>
                                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                Выручка
+                                                Категория
                                             </th>
                                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                Количество продаж
+                                                Кол-во
+                                            </th>
+                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                Выручка
                                             </th>
                                         </tr>
                                     </thead>
@@ -364,10 +285,13 @@ const Dashboard: React.FC = () => {
                                                     {product.product_name}
                                                 </td>
                                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                                    {formatCurrency(product.total_sales)}
+                                                    {product.category}
                                                 </td>
                                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                                                     {product.quantity_sold}
+                                                </td>
+                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                                    {formatCurrency(product.revenue)}
                                                 </td>
                                             </tr>
                                         ))}
