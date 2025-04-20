@@ -56,80 +56,212 @@ router.post('/csv', upload.single('file'), async (req, res) => {
         const lines = fileContent.split('\n');
         console.log(`Total lines: ${lines.length}`);
 
-        for (const line of lines) {
-            if (line.trim() === '') continue;
-
-            if (line.startsWith('# Products data')) {
-                currentSection = 'products';
-                isHeaderRow = true;
-                console.log('Found Products section');
-                continue;
-            } else if (line.startsWith('# Regions data')) {
-                currentSection = 'regions';
-                isHeaderRow = true;
-                console.log('Found Regions section');
-                continue;
-            } else if (line.startsWith('# Orders data')) {
-                currentSection = 'orders';
-                isHeaderRow = true;
-                console.log('Found Orders section');
-                continue;
-            }
-
-            if (line.startsWith('#')) continue;
-
-            const values = line.split(',').map(v => v.trim());
+        // Проверка на простой формат (без # секций)
+        const isSimpleFormat = !lines.some(line => line.trim().startsWith('#'));
+        
+        if (isSimpleFormat) {
+            console.log('Detected simple format without sections');
+            let headerLine = '';
             
-            // Skip header rows
-            if (isHeaderRow) {
-                isHeaderRow = false;
-                console.log(`Skipping header row: ${line}`);
-                continue;
+            // Найдем строку заголовка и получим индексы столбцов
+            for (let i = 0; i < lines.length; i++) {
+                const line = lines[i].trim();
+                if (line && !line.startsWith('#')) {
+                    headerLine = line;
+                    isHeaderRow = true;
+                    break;
+                }
             }
-
+            
+            const headerValues = headerLine.split(',').map(v => v.trim().toLowerCase());
+            
+            // Получаем индексы нужных столбцов
+            const orderIdIndex = headerValues.findIndex(h => h.includes('заказ') || h.includes('order'));
+            const customerIdIndex = headerValues.findIndex(h => h.includes('клиент') && h.includes('id'));
+            const customerNameIndex = headerValues.findIndex(h => (h.includes('клиент') || h.includes('customer')) && h.includes('имя') || h.includes('name'));
+            const productNameIndex = headerValues.findIndex(h => h.includes('товар') || h.includes('product'));
+            const quantityIndex = headerValues.findIndex(h => h.includes('кол') || h.includes('quant'));
+            const salesIndex = headerValues.findIndex(h => h.includes('сумм') || h.includes('sales'));
+            const dateIndex = headerValues.findIndex(h => h.includes('дата') || h.includes('date'));
+            const regionNameIndex = headerValues.findIndex(h => h.includes('регион') || h.includes('region'));
+            
+            console.log('Column indexes:', {
+                orderIdIndex,
+                customerIdIndex,
+                customerNameIndex,
+                productNameIndex,
+                quantityIndex,
+                salesIndex,
+                dateIndex,
+                regionNameIndex
+            });
+            
+            // Проверим существуют ли регионы и продукты, или нам нужно их создать
+            let existingRegions: {[key: string]: number} = {};
+            let existingProducts: {[key: string]: number} = {};
+            
             try {
-                if (currentSection === 'products') {
-                    // Create product without category
-                    const product = {
-                        id: parseInt(values[0]),
-                        name: values[1],
-                        price: parseFloat(values[2])
-                    };
-                    console.log('Adding product:', product);
-                    results.products.push(product);
-                } else if (currentSection === 'regions') {
-                    results.regions.push({
-                        id: parseInt(values[0]),
-                        name: values[1]
-                    });
-                } else if (currentSection === 'orders') {
-                    // Convert customer_id to integer if possible
-                    let customerId: number;
-                    try {
-                        customerId = parseInt(values[1]);
-                        if (isNaN(customerId)) {
-                            console.warn(`Non-numeric customer_id: ${values[1]}, using 0 instead`);
-                            customerId = 0; // Default value
+                const regionsResult = await pool.query('SELECT id, name FROM regions');
+                regionsResult.rows.forEach(row => {
+                    existingRegions[row.name.toLowerCase()] = row.id;
+                });
+                
+                const productsResult = await pool.query('SELECT id, name FROM products');
+                productsResult.rows.forEach(row => {
+                    existingProducts[row.name.toLowerCase()] = row.id;
+                });
+                
+                console.log('Existing regions:', existingRegions);
+                console.log('Existing products:', existingProducts);
+            } catch (err) {
+                console.error('Error fetching existing entities:', err);
+            }
+            
+            // Проходим по всем строкам и обрабатываем данные
+            for (let i = 0; i < lines.length; i++) {
+                const line = lines[i].trim();
+                if (!line || line === headerLine) continue;
+                
+                try {
+                    const values = line.split(',').map(v => v.trim());
+                    
+                    // Получаем значения из строки
+                    const orderId = orderIdIndex >= 0 ? values[orderIdIndex] : `ORD-${i}`;
+                    const customerId = customerIdIndex >= 0 ? parseInt(values[customerIdIndex]) || 0 : 0;
+                    const customerName = customerNameIndex >= 0 ? values[customerNameIndex] : '';
+                    const productName = productNameIndex >= 0 ? values[productNameIndex] : '';
+                    const quantity = quantityIndex >= 0 ? parseInt(values[quantityIndex]) || 0 : 0;
+                    const sales = salesIndex >= 0 ? parseFloat(values[salesIndex]) || 0 : 0;
+                    const orderDate = dateIndex >= 0 ? values[dateIndex] : new Date().toISOString().split('T')[0];
+                    const regionName = regionNameIndex >= 0 ? values[regionNameIndex] : '';
+                    
+                    // Проверим и при необходимости создадим регион
+                    let regionId: number | null = null;
+                    if (regionName) {
+                        if (existingRegions[regionName.toLowerCase()]) {
+                            regionId = existingRegions[regionName.toLowerCase()];
+                        } else {
+                            // Создаем новый регион
+                            const newRegionId = Object.keys(existingRegions).length + 1;
+                            results.regions.push({
+                                id: newRegionId,
+                                name: regionName
+                            });
+                            existingRegions[regionName.toLowerCase()] = newRegionId;
+                            regionId = newRegionId;
                         }
-                    } catch (err) {
-                        console.warn(`Error parsing customer_id: ${values[1]}, using 0 instead`);
-                        customerId = 0;
                     }
                     
+                    // Проверим и при необходимости создадим продукт
+                    let productId: number | null = null;
+                    if (productName) {
+                        if (existingProducts[productName.toLowerCase()]) {
+                            productId = existingProducts[productName.toLowerCase()];
+                        } else {
+                            // Создаем новый продукт
+                            const newProductId = Object.keys(existingProducts).length + 1;
+                            results.products.push({
+                                id: newProductId,
+                                name: productName,
+                                price: sales / quantity // Примерно оцениваем цену
+                            });
+                            existingProducts[productName.toLowerCase()] = newProductId;
+                            productId = newProductId;
+                        }
+                    }
+                    
+                    // Добавляем заказ
                     results.orders.push({
-                        order_id: values[0],
+                        order_id: orderId,
                         customer_id: customerId,
-                        customer_name: values[2],
-                        product_id: parseInt(values[3]) || null,
-                        quantity: parseInt(values[4]) || 0,
-                        sales: parseFloat(values[5]) || 0,
-                        order_date: values[6],
-                        region_id: parseInt(values[7]) || null
+                        customer_name: customerName,
+                        product_id: productId,
+                        quantity: quantity,
+                        sales: sales,
+                        order_date: orderDate,
+                        region_id: regionId
                     });
+                } catch (error) {
+                    console.error('Error processing line:', line, error);
                 }
-            } catch (parseError) {
-                console.error('Error parsing line:', line);
-                console.error('Parse error:', parseError);
+            }
+        } else {
+            // Обработка формата с секциями (оригинальный код)
+            for (const line of lines) {
+                if (line.trim() === '') continue;
+    
+                if (line.startsWith('# Products data')) {
+                    currentSection = 'products';
+                    isHeaderRow = true;
+                    console.log('Found Products section');
+                    continue;
+                } else if (line.startsWith('# Regions data')) {
+                    currentSection = 'regions';
+                    isHeaderRow = true;
+                    console.log('Found Regions section');
+                    continue;
+                } else if (line.startsWith('# Orders data')) {
+                    currentSection = 'orders';
+                    isHeaderRow = true;
+                    console.log('Found Orders section');
+                    continue;
+                }
+    
+                if (line.startsWith('#')) continue;
+    
+                const values = line.split(',').map(v => v.trim());
+                
+                // Skip header rows
+                if (isHeaderRow) {
+                    isHeaderRow = false;
+                    console.log(`Skipping header row: ${line}`);
+                    continue;
+                }
+    
+                try {
+                    if (currentSection === 'products') {
+                        // Create product without category
+                        const product = {
+                            id: parseInt(values[0]),
+                            name: values[1],
+                            price: parseFloat(values[2])
+                        };
+                        console.log('Adding product:', product);
+                        results.products.push(product);
+                    } else if (currentSection === 'regions') {
+                        results.regions.push({
+                            id: parseInt(values[0]),
+                            name: values[1]
+                        });
+                    } else if (currentSection === 'orders') {
+                        // Convert customer_id to integer if possible
+                        let customerId: number;
+                        try {
+                            customerId = parseInt(values[1]);
+                            if (isNaN(customerId)) {
+                                console.warn(`Non-numeric customer_id: ${values[1]}, using 0 instead`);
+                                customerId = 0; // Default value
+                            }
+                        } catch (err) {
+                            console.warn(`Error parsing customer_id: ${values[1]}, using 0 instead`);
+                            customerId = 0;
+                        }
+                        
+                        results.orders.push({
+                            order_id: values[0],
+                            customer_id: customerId,
+                            customer_name: values[2],
+                            product_id: parseInt(values[3]) || null,
+                            quantity: parseInt(values[4]) || 0,
+                            sales: parseFloat(values[5]) || 0,
+                            order_date: values[6],
+                            region_id: parseInt(values[7]) || null
+                        });
+                    }
+                } catch (parseError) {
+                    console.error('Error parsing line:', line);
+                    console.error('Parse error:', parseError);
+                }
             }
         }
 

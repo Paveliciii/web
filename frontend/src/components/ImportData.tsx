@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
 import api from '../services/api';
 import { useNavigate } from 'react-router-dom';
+import { downloadCsvExample, getImportCsvExample } from '../utils/format';
 
 const ImportData: React.FC = () => {
     const [file, setFile] = useState<File | null>(null);
     const [message, setMessage] = useState<string>('');
     const [error, setError] = useState<string>('');
+    const [showExample, setShowExample] = useState<boolean>(false);
     const navigate = useNavigate();
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -27,6 +29,7 @@ const ImportData: React.FC = () => {
         formData.append('file', file);
 
         try {
+            setMessage('Импортирую данные...');
             const response = await api.post('/import/csv', formData, {
                 headers: {
                     'Content-Type': 'multipart/form-data',
@@ -51,9 +54,49 @@ const ImportData: React.FC = () => {
         }
     };
 
+    const handleDownloadExample = () => {
+        downloadCsvExample();
+    };
+
     return (
         <div className="container mx-auto px-4 py-8">
             <h2 className="text-2xl font-bold mb-6">Импорт данных</h2>
+            
+            <div className="mb-6">
+                <button 
+                    type="button"
+                    onClick={() => setShowExample(!showExample)}
+                    className="text-blue-600 underline hover:text-blue-800 mb-2"
+                >
+                    {showExample ? 'Скрыть формат данных' : 'Показать формат данных'}
+                </button>
+                
+                {showExample && (
+                    <div className="mb-4">
+                        <h3 className="text-lg font-semibold mb-2">Формат CSV файла:</h3>
+                        <div className="bg-gray-100 p-3 rounded overflow-x-auto">
+                            <pre className="text-sm">{getImportCsvExample()}</pre>
+                        </div>
+                        <div className="mt-2">
+                            <button
+                                type="button"
+                                onClick={handleDownloadExample}
+                                className="text-sm bg-green-50 hover:bg-green-100 text-green-700 py-1 px-3 rounded border border-green-300"
+                            >
+                                Скачать пример CSV
+                            </button>
+                        </div>
+                    </div>
+                )}
+                
+                <div className="bg-blue-50 border-l-4 border-blue-500 p-4 mb-4">
+                    <p className="text-blue-700">
+                        <strong>Примечание:</strong> Импортируемый файл должен содержать заголовок с названиями колонок и данные в формате CSV.
+                        Система автоматически создаст новые товары и регионы, если они не существуют в базе.
+                    </p>
+                </div>
+            </div>
+            
             <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
