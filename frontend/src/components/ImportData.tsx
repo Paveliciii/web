@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
 import api from '../services/api';
+import { useNavigate } from 'react-router-dom';
 
 const ImportData: React.FC = () => {
     const [file, setFile] = useState<File | null>(null);
     const [message, setMessage] = useState<string>('');
     const [error, setError] = useState<string>('');
+    const navigate = useNavigate();
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files[0]) {
@@ -36,6 +38,12 @@ const ImportData: React.FC = () => {
             // Reset file input
             const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
             if (fileInput) fileInput.value = '';
+            
+            // Показываем сообщение об успехе
+            setTimeout(() => {
+                // После успешного импорта перенаправляем на Dashboard
+                navigate('/');
+            }, 1500);
         } catch (err) {
             console.error('Import error:', err);
             setError('Ошибка при импорте данных');

@@ -49,9 +49,9 @@ export interface SalesByRegionChart {
 }
 
 export interface SalesByProduct {
-    product_name: string;
-    category: string;
-    quantity_sold: number;
+    product: string;
+    category?: string;
+    total_quantity: number;
     revenue: number;
 }
 

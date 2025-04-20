@@ -75,6 +75,28 @@ const Dashboard: React.FC = () => {
 
     useEffect(() => {
         fetchData();
+        
+        // Установим интервал обновления данных каждые 30 секунд при активном окне
+        const interval = setInterval(() => {
+            if (document.visibilityState === 'visible') {
+                fetchData();
+            }
+        }, 30000);
+        
+        // Обработчик изменения видимости страницы
+        const handleVisibilityChange = () => {
+            if (document.visibilityState === 'visible') {
+                fetchData();
+            }
+        };
+        
+        // Добавляем слушатель события изменения видимости
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+        
+        return () => {
+            clearInterval(interval);
+            document.removeEventListener('visibilitychange', handleVisibilityChange);
+        };
     }, [fetchData]);
 
     // Convert data for charts
@@ -84,9 +106,9 @@ const Dashboard: React.FC = () => {
     }));
 
     const productsForChart: SalesByProductChart[] = products.map(product => ({
-        product_name: product.product_name,
+        product_name: product.product,
         total_sales: product.revenue,
-        quantity_sold: product.quantity_sold
+        quantity_sold: product.total_quantity || 0
     }));
 
     const handleFilterChange = (newFilters: FilterState) => {
@@ -131,6 +153,15 @@ const Dashboard: React.FC = () => {
             <div className="flex justify-between items-center mb-6">
                 <h1 className="text-2xl font-bold">Панель управления продажами</h1>
                 <div className="flex space-x-4">
+                    <button
+                        onClick={fetchData}
+                        className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 inline-block mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                        </svg>
+                        Обновить
+                    </button>
                     <button
                         onClick={handleExportData}
                         className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
