@@ -1,0 +1,4 @@
+﻿order_id,customer_id,customer_name,product_id,quantity,sales,order_date,region_id
+TEST-001,101,Тестовый Клиент,1,5,225000,2024-03-15,1
+TEST-002,102,Второй Клиент,2,3,105000,2024-03-16,2
+TEST-003,103,Третий Клиент,3,2,50000,2024-03-17,3
