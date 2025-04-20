@@ -46,8 +46,8 @@ const Dashboard: React.FC = () => {
             setError(null);
 
             const summaryRes = await api.get('/analytics/summary');
-            const regionRes = await api.get('/analytics/sales-by-region');
-            const productRes = await api.get('/analytics/sales-by-product');
+            const regionRes = await api.get('/analytics/by-region');
+            const productRes = await api.get('/analytics/by-product');
             const trendRes = await api.get('/analytics/trend');
 
             setSummary({

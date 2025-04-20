@@ -38,6 +38,8 @@ router.post('/csv', upload.single('file'), async (req, res) => {
     }
 
     console.log('File received:', req.file);
+    console.log('File content length:', req.file.size);
+    
     const filePath = req.file.path;
     const results: any = {
         products: [],
@@ -101,15 +103,28 @@ router.post('/csv', upload.single('file'), async (req, res) => {
                         name: values[1]
                     });
                 } else if (currentSection === 'orders') {
+                    // Convert customer_id to integer if possible
+                    let customerId: number;
+                    try {
+                        customerId = parseInt(values[1]);
+                        if (isNaN(customerId)) {
+                            console.warn(`Non-numeric customer_id: ${values[1]}, using 0 instead`);
+                            customerId = 0; // Default value
+                        }
+                    } catch (err) {
+                        console.warn(`Error parsing customer_id: ${values[1]}, using 0 instead`);
+                        customerId = 0;
+                    }
+                    
                     results.orders.push({
                         order_id: values[0],
-                        customer_id: values[1],
+                        customer_id: customerId,
                         customer_name: values[2],
-                        product_id: parseInt(values[3]),
-                        quantity: parseInt(values[4]),
-                        sales: parseFloat(values[5]),
+                        product_id: parseInt(values[3]) || null,
+                        quantity: parseInt(values[4]) || 0,
+                        sales: parseFloat(values[5]) || 0,
                         order_date: values[6],
-                        region_id: parseInt(values[7])
+                        region_id: parseInt(values[7]) || null
                     });
                 }
             } catch (parseError) {
@@ -125,10 +140,11 @@ router.post('/csv', upload.single('file'), async (req, res) => {
         });
 
         // Import data into database
-        const client = await pool.connect();
-        console.log('Connected to database');
-
+        let client;
         try {
+            client = await pool.connect();
+            console.log('Connected to database');
+
             // Import each entity type with its own transaction
             // First import products
             console.log('Importing products...');
@@ -171,15 +187,28 @@ router.post('/csv', upload.single('file'), async (req, res) => {
             console.log('Importing orders...');
             for (const order of results.orders) {
                 try {
+                    console.log('Inserting order:', order);
                     await client.query('BEGIN');
-                    await client.query(
-                        `INSERT INTO orders (order_id, customer_id, customer_name, product_id, quantity, sales, order_date, region_id)
-                         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-                         ON CONFLICT (order_id) DO UPDATE
-                         SET customer_id = $2, customer_name = $3, product_id = $4, quantity = $5, sales = $6, order_date = $7, region_id = $8`,
-                        [order.order_id, order.customer_id, order.customer_name, order.product_id, 
-                         order.quantity, order.sales, order.order_date, order.region_id]
-                    );
+                    
+                    // Use parameterized query to prevent SQL injection
+                    const query = `
+                        INSERT INTO orders (order_id, customer_id, customer_name, product_id, quantity, sales, order_date, region_id)
+                        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+                        ON CONFLICT (order_id) DO UPDATE
+                        SET customer_id = $2, customer_name = $3, product_id = $4, quantity = $5, sales = $6, order_date = $7, region_id = $8
+                    `;
+                    
+                    await client.query(query, [
+                        order.order_id, 
+                        order.customer_id, 
+                        order.customer_name, 
+                        order.product_id, 
+                        order.quantity, 
+                        order.sales, 
+                        order.order_date, 
+                        order.region_id
+                    ]);
+                    
                     await client.query('COMMIT');
                 } catch (orderError) {
                     await client.query('ROLLBACK');
@@ -197,15 +226,17 @@ router.post('/csv', upload.single('file'), async (req, res) => {
                     orders: results.orders.length
                 }
             });
-        } catch (error) {
-            console.error('Database operation error:', error);
+        } catch (dbError) {
+            console.error('Database operation error:', dbError);
             res.status(500).json({ 
-                error: 'Ошибка при импорте данных',
-                details: error instanceof Error ? error.message : 'Unknown error'
+                error: 'Ошибка при импорте данных в базу',
+                details: dbError instanceof Error ? dbError.message : 'Unknown database error'
             });
         } finally {
-            client.release();
-            console.log('Database connection released');
+            if (client) {
+                client.release();
+                console.log('Database connection released');
+            }
         }
     } catch (error) {
         console.error('Import process error:', error);
