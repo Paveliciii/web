@@ -1,0 +1,13 @@
+{
+  "files": {
+    "main.css": "/sales-analytics/static/css/main.6ca2956d.css",
+    "main.js": "/sales-analytics/static/js/main.b319e245.js",
+    "index.html": "/sales-analytics/index.html",
+    "main.6ca2956d.css.map": "/sales-analytics/static/css/main.6ca2956d.css.map",
+    "main.b319e245.js.map": "/sales-analytics/static/js/main.b319e245.js.map"
+  },
+  "entrypoints": [
+    "static/css/main.6ca2956d.css",
+    "static/js/main.b319e245.js"
+  ]
+}
