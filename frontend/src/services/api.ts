@@ -9,8 +9,8 @@ console.log('API URL:', API_URL);
 // Создаем экземпляр axios с базовым URL
 const api = axios.create({
     baseURL: API_URL,
-    timeout: 0,
-    withCredentials: true
+    timeout: 30000, // Увеличиваем таймаут до 30 секунд для slow стартов на Render.com
+    withCredentials: false // Отключаем credentials для кросс-доменных запросов
 });
 
 // Обработка запросов
@@ -77,9 +77,9 @@ export const productsApi = {
 
 export const analyticsApi = {
     getSummary: () => api.get<SalesSummary>('/analytics/summary'),
-    getSalesTrend: (period: string) => api.get<SalesTrend[]>('/analytics/sales-trend', { params: { period } }),
-    getSalesByRegion: () => api.get<SalesByRegion[]>('/analytics/sales-by-region'),
-    getSalesByProduct: () => api.get<SalesByProduct[]>('/analytics/sales-by-product'),
+    getSalesTrend: (period: string) => api.get<SalesTrend[]>('/analytics/trend', { params: { period } }),
+    getSalesByRegion: () => api.get<SalesByRegion[]>('/analytics/by-region'),
+    getSalesByProduct: () => api.get<SalesByProduct[]>('/analytics/by-product'),
     getTopProducts: (params?: { limit?: number }) =>
         api.get<SalesByProduct[]>('/analytics/top-products', { params }),
     getCustomerSegments: () => api.get<CustomerSegment[]>('/analytics/customer-segments'),
