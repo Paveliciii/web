@@ -1,0 +1,11 @@
+order_id,customer_id,customer_name,product_id,quantity,sales,order_date,region_id
+ORD-1,CUST-1,Customer 1,1,2,90000,2024-03-01,1
+ORD-2,CUST-2,Customer 2,2,1,35000,2024-03-02,2
+ORD-3,CUST-3,Customer 3,3,3,75000,2024-03-03,3
+ORD-4,CUST-4,Customer 4,1,1,45000,2024-03-04,1
+ORD-5,CUST-5,Customer 5,2,2,70000,2024-03-05,2
+ORD-6,CUST-6,Customer 6,3,1,25000,2024-03-06,3
+ORD-7,CUST-7,Customer 7,1,3,135000,2024-03-07,1
+ORD-8,CUST-8,Customer 8,2,1,35000,2024-03-08,2
+ORD-9,CUST-9,Customer 9,3,2,50000,2024-03-09,3
+ORD-10,CUST-10,Customer 10,1,1,45000,2024-03-10,1 

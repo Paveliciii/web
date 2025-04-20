@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: sales-analytics-frontend
+    env: static
+    buildCommand: npm ci && npm run build
+    staticPublishPath: ./build
+    envVars:
+      - key: REACT_APP_API_URL
+        fromService:
+          name: sales-analytics-backend
+          type: web
+          envVarKey: RENDER_EXTERNAL_URL 

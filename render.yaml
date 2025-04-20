@@ -1,0 +1,44 @@
+services:
+  - type: web
+    name: sales-analytics-backend
+    env: node
+    region: frankfurt
+    plan: free
+    rootDir: backend
+    buildCommand: npm ci && npm run build
+    startCommand: npm start
+    envVars:
+      - key: DATABASE_URL
+        value: postgresql://sales_admin:SRer9gPoS7s1dZwW2sV4KA5LHfEAnyOc@dpg-d02a2uruibrs73alv2fg-a.virginia-postgres.render.com/sales_analytics_db?sslmode=require
+      - key: PORT
+        value: 3001
+      - key: NODE_ENV
+        value: production
+      - key: DB_USER
+        value: sales_admin
+      - key: DB_PASSWORD
+        value: SRer9gPoS7s1dZwW2sV4KA5LHfEAnyOc
+      - key: DB_NAME
+        value: sales_analytics_db
+      - key: DB_HOST
+        value: dpg-d02a2uruibrs73alv2fg-a.virginia-postgres.render.com
+
+  - type: web
+    name: sales-analytics-frontend
+    env: static
+    region: frankfurt
+    plan: free
+    rootDir: frontend
+    buildCommand: npm ci && npm run build
+    staticPublishPath: ./build
+    envVars:
+      - key: REACT_APP_API_URL
+        fromService:
+          name: sales-analytics-backend
+          type: web
+          envVarKey: RENDER_EXTERNAL_URL
+
+databases:
+  - name: sales_analytics_db
+    region: frankfurt
+    plan: free
